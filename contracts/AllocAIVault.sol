@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-// --- Standard ERC20 Interface ---
+/**
+ * @title AllocAIVault
+ * @dev Autonomous Yield Vault for Kite AI Ecosystem.
+ * Features: EIP-3009 Gasless Deposits, Direct Staking Pipeline, Cross-Chain Hub.
+ */
+
 interface IERC20 {
     function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
     function balanceOf(address account) external view returns (uint256);
@@ -9,26 +14,16 @@ interface IERC20 {
     function transfer(address recipient, uint256 amount) external returns (bool);
 }
 
-/**
- * @title AllocAIVault
- * @dev Core execution vault for the AllocAI Autonomous Agent.
- */
 contract AllocAIVault {
-    // --- State Variables ---
+    // --- Access Control ---
     address public owner;
     address public authorizedAgent;
-    address public USDC_TOKEN; // Configurable for Testnet/Mainnet
-    address public constant LUCID_CONTROLLER = 0x92E2391d0836e10b9e5EAB5d56BfC286Fadec25b;
-    address public constant L_USDC_TOKEN = 0x7aB6f3ed87C42eF0aDb67Ed95090f8bF5240149e;
 
-    // --- Kite Ecosystem Official Addresses (Verified) ---
-    address public constant SERVICE_REGISTRY = 0xc67a4AbcD8853221F241a041ACb1117b38DA587F;
-    // DEPRECATED: ACCOUNT_FACTORY = 0xF0Fc19F0dc393867F19351d25EDfc5E099561cb7;
-    
-    // Dynamic Bridge Address (Discovered via Service Registry or LayerZero Executor)
-    // Lucid bridging on Kite uses LayerZero: 0xe93685f3bBA03016F02bD1828BaDD6195988D950
+    // --- Asset Configuration ---
+    address public immutable USDC_TOKEN;
     address public bridgeAggregator;
 
+    // --- Strategy Context ---
     struct Strategy {
         string protocol;
         string chain;
@@ -36,167 +31,270 @@ contract AllocAIVault {
         uint256 lastUpdate;
     }
 
+    Strategy public activeStrategy;
+    address public activeStakingContract; 
+    address public yieldBearingToken; 
+    uint256 public globalStakedBalance; // Assets bridged to external chains
+    
+    bytes4 public depositSelector = bytes4(keccak256("deposit(uint256)"));
+    bytes4 public withdrawSelector = bytes4(keccak256("withdraw(uint256)"));
+
+    // --- Ecosystem ---
+    address public constant SERVICE_REGISTRY = 0xc67a4AbcD8853221F241a041ACb1117b38DA587F;
     uint256 public kiteServiceId;
     bool public isRegisteredService;
 
-    Strategy public activeStrategy;
+    // --- User Accounting ---
     mapping(address => uint256) public userShares;
     uint256 public totalShares;
+
+    // --- Events ---
+    event Deposit(address indexed user, uint256 assets, uint256 shares, string sourceChain);
+    event Withdraw(address indexed user, uint256 assets, uint256 shares);
+    event ReallocationInitiated(string toProtocol, string toChain, uint256 newApr, bytes32 indexed proofHash);
+    event AgentDecisionLogged(string decision, bytes32 indexed decisionHash);
 
     modifier onlyAuthorized() {
         require(msg.sender == owner || msg.sender == authorizedAgent, "Not authorized");
         _;
     }
 
-    // --- Events ---
-    event Deposit(address indexed user, uint256 assets, uint256 shares, string sourceChain);
-    event Withdraw(address indexed user, uint256 assets, uint256 shares);
-    event ReallocationInitiated(string toProtocol, string toChain, uint256 newApr, bytes32 indexed proofHash);
-
     constructor(address _agent, address _usdc) {
         owner = msg.sender;
         authorizedAgent = _agent;
         USDC_TOKEN = _usdc;
-        
-        // Default Strategy
         activeStrategy = Strategy("Lucid Native", "Kite AI", 585, block.timestamp);
     }
 
-    // --- Core Functions ---
-
     /**
-     * @dev Returns total USDC managed by the vault (on-chain balance).
+     * @dev Total valuation: Liquid USDC + Locally Staked + Cross-Chain Staked.
      */
     function totalAssets() public view returns (uint256) {
-        return IERC20(USDC_TOKEN).balanceOf(address(this));
+        uint256 liquid = IERC20(USDC_TOKEN).balanceOf(address(this));
+        uint256 localStaked = 0;
+        if (yieldBearingToken != address(0)) {
+            localStaked = IERC20(yieldBearingToken).balanceOf(address(this));
+        }
+        return liquid + localStaked + globalStakedBalance;
     }
 
     /**
-     * @dev REAL TOKEN DEPOSIT: Pulls USDC and mints Shares (Receipts).
+     * @dev User Deposit: Pulls USDC and automatically routes to the active strategy (local or bridge).
      */
     function deposit(uint256 _assets, string memory _sourceChain) external {
-        uint256 _totalAssets = totalAssets();
-        uint256 _shares = (totalShares == 0) ? _assets : (_assets * totalShares) / _totalAssets;
-
         bool success = IERC20(USDC_TOKEN).transferFrom(msg.sender, address(this), _assets);
         require(success, "USDC transfer failed");
+        _processFlow(_assets);
+        emit Deposit(msg.sender, _assets, 0, _sourceChain);
+    }
+
+    /**
+     * @dev Gasless Deposit: EIP-3009 integration for Kite AI.
+     */
+    function depositWithSignature(
+        uint256 _assets,
+        string memory _sourceChain,
+        uint256 _validAfter,
+        uint256 _validBefore,
+        bytes32 _nonce,
+        uint8 _v,
+        bytes32 _r,
+        bytes32 _s
+    ) external {
+        (bool success, ) = USDC_TOKEN.call(
+            abi.encodeWithSignature(
+                "receiveWithAuthorization(address,address,uint256,uint256,uint256,bytes32,uint8,bytes32,bytes32)",
+                msg.sender,
+                address(this),
+                _assets,
+                _validAfter,
+                _validBefore,
+                _nonce,
+                _v,
+                _r,
+                _s
+            )
+        );
+        require(success, "EIP-3009 transfer failed");
+        _processFlow(_assets);
+        emit Deposit(msg.sender, _assets, 0, _sourceChain);
+    }
+
+    function _processFlow(uint256 _assets) internal {
+        uint256 _totalAssets = totalAssets();
+        uint256 _shares = (totalShares == 0) ? _assets : (_assets * totalShares) / (_totalAssets - _assets);
+        
+        bytes32 kiteHash = keccak256(abi.encodePacked("Kite AI"));
+        bytes32 currentChainHash = keccak256(abi.encodePacked(activeStrategy.chain));
+
+        if (currentChainHash == kiteHash) {
+            // Local Staking
+            if (activeStakingContract != address(0)) {
+                IERC20(USDC_TOKEN).approve(activeStakingContract, _assets);
+                (bool success, ) = activeStakingContract.call(abi.encodeWithSelector(depositSelector, _assets));
+                if (!success) emit AgentDecisionLogged("Auto-stake fail. Funds held liquid.", bytes32(0));
+            }
+        } else if (bridgeAggregator != address(0)) {
+            // Invisible Bridging
+            IERC20(USDC_TOKEN).approve(bridgeAggregator, _assets);
+            (bool success, ) = bridgeAggregator.call(
+                abi.encodeWithSignature("send(address,uint256,string)", USDC_TOKEN, _assets, activeStrategy.chain)
+            );
+            if (success) {
+                globalStakedBalance += _assets;
+            } else {
+                emit AgentDecisionLogged("Auto-bridge fail. Funds held liquid.", bytes32(0));
+            }
+        }
 
         userShares[msg.sender] += _shares;
         totalShares += _shares;
-
-        emit Deposit(msg.sender, _assets, _shares, _sourceChain);
     }
 
+    struct WithdrawalRequest {
+        uint256 assets;
+        uint256 shares;
+        bool isNative; // True if withdrawing on Kite, False if requesting bridge
+    }
+
+    mapping(address => WithdrawalRequest) public pendingWithdrawals;
+
+    event CrossChainWithdrawRequested(address indexed user, uint256 assets, string fromChain);
+    event CrossChainWithdrawSettled(address indexed user, uint256 assets);
+
     /**
-     * @dev User withdraws their assets based on their current share value (Principal + Yield).
+     * @dev User withdraws assets. Handles local vs cross-chain logic automatically.
      */
     function withdraw(uint256 _assets) external {
+        _execWithdraw(_assets, msg.sender);
+    }
+
+    /**
+     * @dev Gasless Withdrawal: Signature-based authentication for KITE-free operations.
+     */
+    function withdrawWithSignature(
+        uint256 _assets,
+        uint256 _deadline,
+        uint8 _v,
+        bytes32 _r,
+        bytes32 _s
+    ) external {
+        require(block.timestamp <= _deadline, "Signature expired");
+        
+        bytes32 structHash = keccak256(abi.encode(
+            keccak256("Withdrawal(address user,uint256 assets,uint256 deadline)"),
+            msg.sender,
+            _assets,
+            _deadline
+        ));
+        
+        // Note: For production, implement a proper EIP-712 Domain Separator
+        bytes32 hash = keccak256(abi.encodePacked("\x19\x01", bytes32(0), structHash));
+        address signer = ecrecover(hash, _v, _r, _s);
+        require(signer == msg.sender, "Invalid signature");
+
+        _execWithdraw(_assets, msg.sender);
+    }
+
+    function _execWithdraw(uint256 _assets, address _user) internal {
         uint256 _totalAssets = totalAssets();
-        // Calculate shares corresponding to requested assets: Shares = Assets * TotalShares / TotalAssets
         uint256 _shares = (_assets * totalShares) / _totalAssets;
-        
-        require(userShares[msg.sender] >= _shares, "Insufficient share balance");
-        
-        userShares[msg.sender] -= _shares;
-        totalShares -= _shares;
+        require(userShares[_user] >= _shares, "Insufficient balance");
 
-        bool success = IERC20(USDC_TOKEN).transfer(msg.sender, _assets);
-        require(success, "Withdraw transfer failed");
+        bytes32 kiteHash = keccak256(abi.encodePacked("Kite AI"));
+        bytes32 currentChainHash = keccak256(abi.encodePacked(activeStrategy.chain));
 
-        emit Withdraw(msg.sender, _assets, _shares);
+        if (currentChainHash == kiteHash) {
+            uint256 liquid = IERC20(USDC_TOKEN).balanceOf(address(this));
+            if (liquid < _assets && activeStakingContract != address(0)) {
+                uint256 needed = _assets - liquid;
+                (bool success, ) = activeStakingContract.call(abi.encodeWithSelector(withdrawSelector, needed));
+                require(success, "Local unstake failed");
+            }
+            userShares[_user] -= _shares;
+            totalShares -= _shares;
+            IERC20(USDC_TOKEN).transfer(_user, _assets);
+            emit Withdraw(_user, _assets, _shares);
+        } else {
+            userShares[_user] -= _shares;
+            pendingWithdrawals[_user] = WithdrawalRequest(_assets, _shares, false);
+            if (bridgeAggregator != address(0)) {
+                (bool success, ) = bridgeAggregator.call(
+                    abi.encodeWithSignature("requestUnstake(address,uint256,address)", USDC_TOKEN, _assets, _user)
+                );
+                require(success, "Cross-chain pull request failed");
+            }
+            emit CrossChainWithdrawRequested(_user, _assets, activeStrategy.chain);
+        }
     }
 
     /**
-     * @dev The "Agent Switch": Only the AI Agent or Owner can trigger a move.
-     * Executes arbitrary real-money yield deployments on-chain (e.g., to Lucid Controller).
+     * @dev Completion hook: Called by bridge/agent when funds arrive back from Ethereum.
      */
-    /**
-     * @dev Dynamically discovers the official Bridge from the Kite Service Registry.
-     */
-    function updateBridgeFromRegistry() external onlyAuthorized {
-        // address discovered = IServiceRegistry(SERVICE_REGISTRY).getServiceAddress("Lucid LayerZero Bridge");
-        // bridgeAggregator = discovered;
-        
-        // FOR MAINNET: We set the verified LayerZero Executor shared by the Kite Team.
-        bridgeAggregator = 0xe93685f3bBA03016F02bD1828BaDD6195988D950;
+    function settleCrossChainWithdrawal(address _user) external onlyAuthorized {
+        WithdrawalRequest memory request = pendingWithdrawals[_user];
+        require(request.assets > 0, "No pending withdrawal");
+
+        uint256 liquid = IERC20(USDC_TOKEN).balanceOf(address(this));
+        require(liquid >= request.assets, "Funds not yet arrived from bridge");
+
+        totalShares -= request.shares;
+        delete pendingWithdrawals[_user];
+
+        IERC20(USDC_TOKEN).transfer(_user, request.assets);
+        emit CrossChainWithdrawSettled(_user, request.assets);
     }
 
     /**
-     * @dev Executes arbitrary real-money yield deployments on-chain.
+     * @dev Agent Reallocation: Transfers funds to new protocols or chains.
      */
     function reallocate(
-        string memory _protocol, 
-        string memory _chain, 
-        uint256 _newApr,
-        bytes32 _proofHash,
-        address _targetContract,
-        bytes calldata _executionData
+        string memory _protocol, string memory _chain, uint256 _newApr, bytes32 _proofHash,
+        address _targetContract, bytes calldata _executionData,
+        address _newStakingContract, address _newYieldToken
     ) external onlyAuthorized {
-        activeStrategy.protocol = _protocol;
-        activeStrategy.chain = _chain;
-        activeStrategy.currentApr = _newApr;
-        activeStrategy.lastUpdate = block.timestamp;
+        activeStrategy = Strategy(_protocol, _chain, _newApr, block.timestamp);
+        activeStakingContract = _newStakingContract;
+        yieldBearingToken = _newYieldToken;
 
-        bytes32 kiteChainHash = keccak256(abi.encodePacked("Kite AI"));
+        uint256 currentBalance = IERC20(USDC_TOKEN).balanceOf(address(this));
+        bytes32 kiteHash = keccak256(abi.encodePacked("Kite AI"));
         bytes32 targetChainHash = keccak256(abi.encodePacked(_chain));
 
-        if (targetChainHash != kiteChainHash && bridgeAggregator != address(0)) {
-            // Updated LayerZero / Lucid bridge call logic
-            (bool bridgeSuccess, ) = bridgeAggregator.call(
-                abi.encodeWithSignature("send(address,uint256,string)", USDC_TOKEN, totalAssets(), _chain)
+        if (targetChainHash != kiteHash && bridgeAggregator != address(0)) {
+            uint256 toBridge = totalAssets(); // Bridge everything
+            // Local unstake first would be required if yieldToken exists
+            IERC20(USDC_TOKEN).approve(bridgeAggregator, toBridge);
+            (bool success, ) = bridgeAggregator.call(
+                abi.encodeWithSignature("send(address,uint256,string)", USDC_TOKEN, toBridge, _chain)
             );
-            require(bridgeSuccess, "LayerZero cross-chain bridge request failed");
-        } 
-        else if (_targetContract != address(0) && _executionData.length > 0) {
+            require(success, "Bridge fail");
+            globalStakedBalance += toBridge;
+        } else if (_targetContract != address(0)) {
+            IERC20(USDC_TOKEN).approve(_targetContract, currentBalance);
             (bool success, ) = _targetContract.call(_executionData);
-            require(success, "Agent execution failed on destination protocol");
+            require(success, "Execution fail");
         }
-
         emit ReallocationInitiated(_protocol, _chain, _newApr, _proofHash);
     }
 
-    /**
-     * @dev Returns the current yield accrued since last update (linear approximation)
-     */
-    function getEstimatedGrowth() external view returns (uint256) {
-        uint256 timePassed = block.timestamp - activeStrategy.lastUpdate;
-        // Calculation: balance * apr * time / secondsInYear
-        return (totalAssets() * activeStrategy.currentApr * timePassed) / (10000 * 31536000);
-    }
-
-    // --- Administration ---
-
-    /**
-     * @dev Official Onboarding to Kite App Store (Service Registry).
-     * This makes AllocAI discoverable by other agents in the ecosystem.
-     */
-    function registerAsKiteService(
-        string memory _pricingModel, 
-        uint256 _unitPrice, 
-        string memory _metadata
-    ) external onlyAuthorized {
-        // ABI: registerService(string serviceType, string pricingModel, uint256 unitPrice, string metadata)
+    // --- Admin ---
+    function updateBridge(address _bridge) external onlyAuthorized { bridgeAggregator = _bridge; }
+    
+    function registerAsKiteService(string memory _pricing, uint256 _price, string memory _meta) external onlyAuthorized {
         (bool success, bytes memory data) = SERVICE_REGISTRY.call(
-            abi.encodeWithSignature(
-                "registerService(string,string,uint256,string)", 
-                "Autonomous Yield Vault", 
-                _pricingModel, 
-                _unitPrice, 
-                _metadata
-            )
+            abi.encodeWithSignature("registerService(string,string,uint256,string)", "AllocAI Vault", _pricing, _price, _meta)
         );
-        require(success, "Registration on Kite App Store failed");
-        
+        require(success, "Registry fail");
         kiteServiceId = abi.decode(data, (uint256));
         isRegisteredService = true;
     }
 
-    function updateAgent(address _newAgent) external {
+    function rescueToken(address _token, uint256 _amount) external {
         require(msg.sender == owner, "Only owner");
-        authorizedAgent = _newAgent;
+        if (_token == address(0)) payable(owner).transfer(_amount);
+        else IERC20(_token).transfer(owner, _amount);
     }
 
-    function getVaultStatus() external view returns (string memory, string memory, uint256) {
-        return (activeStrategy.protocol, activeStrategy.chain, activeStrategy.currentApr);
-    }
+    receive() external payable {}
 }

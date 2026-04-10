@@ -29,14 +29,12 @@ export const useKiteWallet = () => {
     try {
       let ethProvider = window.ethereum;
 
-      // Handle multi-wallet environments (e.g., MetaMask + Phantom)
       if (window.ethereum?.providers?.length) {
         ethProvider = window.ethereum.providers.find((p: any) => p.isMetaMask) || window.ethereum.providers[0];
       }
 
       const browserProvider = new BrowserProvider(ethProvider);
       
-      // ONLY force account selection if explicitly requested (manually clicked)
       if (forceSelection) {
         await browserProvider.send("wallet_requestPermissions", [
           { eth_accounts: {} },
@@ -48,14 +46,12 @@ export const useKiteWallet = () => {
       const chainIdHex = await browserProvider.send("eth_chainId", []);
       const chainId = parseInt(chainIdHex, 16);
 
-      // Auto-switch to Kite Network
       if (chainId !== CURRENT_NETWORK.chainId) {
         try {
           await browserProvider.send("wallet_switchEthereumChain", [
             { chainId: `0x${CURRENT_NETWORK.chainId.toString(16)}` },
           ]);
         } catch (switchError: any) {
-          // If network doesn't exist, try adding it
           if (switchError.code === 4902) {
             try {
               await browserProvider.send("wallet_addEthereumChain", [
@@ -94,38 +90,71 @@ export const useKiteWallet = () => {
     }
   }, []);
 
-  const disconnect = () => {
+  const disconnect = useCallback(() => {
     setAddress(null);
     setBalance(null);
     setSigner(null);
     setProvider(null);
-  };
+  }, []);
 
-  // Eager Connection: check if already connected on mount
+  const refreshBalance = useCallback(async () => {
+    if (typeof window === "undefined" || !window.ethereum || !address) return;
+    
+    try {
+      const ethProvider = window.ethereum.providers?.length 
+        ? (window.ethereum.providers.find((p: any) => p.isMetaMask) || window.ethereum.providers[0])
+        : window.ethereum;
+        
+      const browserProvider = new BrowserProvider(ethProvider);
+      const bal = await browserProvider.getBalance(address);
+      setBalance(ethers.formatEther(bal));
+      
+      // Also update provider/signer in case they went stale
+      setProvider(browserProvider);
+      const signerInstance = await browserProvider.getSigner();
+      setSigner(signerInstance);
+    } catch (e) {
+      console.error("Balance refresh failed:", e);
+    }
+  }, [address]);
+
+  // Periodic refresh (every 15s)
+  useEffect(() => {
+    if (address) {
+      const interval = setInterval(refreshBalance, 15000);
+      return () => clearInterval(interval);
+    }
+  }, [address, refreshBalance]);
+
+  // Eager Connection
   useEffect(() => {
     if (mounted && !address && typeof window !== "undefined" && window.ethereum) {
       window.ethereum.request({ method: "eth_accounts" })
         .then((accounts: string[]) => {
           if (accounts.length > 0) {
-            connect(false); // Connect SILENTLY on refresh
+            connect(false);
           }
         })
         .catch(console.error);
     }
   }, [mounted, address, connect]);
 
-  // Re-connect automatically if accounts change
   useEffect(() => {
     if (typeof window !== "undefined" && window.ethereum) {
-      window.ethereum.on("accountsChanged", (accounts: string[]) => {
+      const handleAccountsChanged = (accounts: string[]) => {
         if (accounts.length > 0) {
           setAddress(accounts[0]);
+          refreshBalance();
         } else {
           disconnect();
         }
-      });
+      };
+      window.ethereum.on("accountsChanged", handleAccountsChanged);
+      return () => {
+        window.ethereum.removeListener("accountsChanged", handleAccountsChanged);
+      };
     }
-  }, []);
+  }, [disconnect, refreshBalance]);
 
-  return { address, balance, loading, error, provider, signer, connect, disconnect };
+  return { address, balance, loading, error, provider, signer, connect, disconnect, refreshBalance };
 };

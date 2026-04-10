@@ -3,7 +3,7 @@ require("dotenv").config();
 
 // --- Kite Ecosystem Addresses (Official) ---
 const SERVICE_REGISTRY_ADDRESS = "0xc67a4AbcD8853221F241a041ACb1117b38DA587F";
-const VAULT_ADDRESS = "0xcaBE4c567D67030e93C37FC56944D5A1A466E115"; // Our latest deployed Vault
+const VAULT_ADDRESS = "0x9cCA18327e8B4a11fE8011695E4bb330a48237df"; // Our latest deployed Vault
 
 const SERVICE_REGISTRY_ABI = [
   "function registerService(string serviceType, string pricingModel, uint256 unitPrice, string metadata) external returns (uint256)",

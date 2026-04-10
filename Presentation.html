@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AllocAI | Product Presentation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root { --accent: #B3A288; --bg: #080808; }
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background: var(--bg); 
+            color: white; 
+            margin: 0; 
+            padding: 0;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        .slide {
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            background: var(--bg);
+            display: flex;
+            flex-direction: column;
+            padding: 3rem 5rem;
+            position: relative;
+            box-sizing: border-box;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            border-radius: 2.5rem;
+        }
+        .accent-text { color: var(--accent); }
+        .pill { 
+            background: rgba(179, 162, 136, 0.1); 
+            border: 1px solid rgba(179, 162, 136, 0.2); 
+            padding: 8px 18px; 
+            border-radius: 12px; 
+            font-size: 10px; 
+            font-weight: 900; 
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--accent);
+        }
+        .ethereal-glow {
+            position: absolute;
+            width: 50vw;
+            height: 50vh;
+            background: radial-gradient(circle, rgba(179,162,136,0.05) 0%, transparent 70%);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        @media print {
+            .slide { page-break-after: always; height: 100vh !important; display: flex !important; visibility: visible !important; position: relative !important; }
+            body { background: var(--bg) !important; }
+        }
+    </style>
+</head>
+<body>
+    <div class="ethereal-glow" style="top: -10%; left: -10%;"></div>
+    
+    <!-- SLIDE 1: DASHBOARD HERO -->
+    <section class="slide">
+        <div class="flex items-center justify-between w-full mb-16 relative z-10">
+            <div class="flex flex-col">
+                <h1 class="text-6xl font-black tracking-tighter">Alloc<span class="accent-text">AI</span></h1>
+                <p class="text-[10px] font-black uppercase tracking-[0.4em] text-gray-400 mt-2">Autonomous Yield Protocol</p>
+            </div>
+            <div class="flex gap-4">
+                <div class="pill">Kite Mainnet</div>
+                <div class="pill border-emerald-500/30 text-emerald-400 bg-emerald-500/5">Live Status</div>
+            </div>
+        </div>
+        
+        <div class="flex-1 flex flex-col justify-center items-center text-center relative z-10">
+            <h2 class="text-7xl font-black tracking-tighter leading-tight mb-8">
+                The First Truly <span class="accent-text italic">Autonomous</span><br/>Vault on Kite AI.
+            </h2>
+            <p class="text-gray-500 text-lg font-medium max-w-2xl leading-relaxed">
+                AllocAI bridges the gap between AI market intelligence and on-chain execution, ensuring your capital is always working in the highest-yield pools.
+            </p>
+        </div>
+    </section>
+
+    <!-- SLIDE 2: THE INTELLIGENCE (OVERSCAN) -->
+    <section class="slide">
+        <div class="mb-12">
+            <p class="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500 mb-2">Core Technology</p>
+            <h2 class="text-4xl font-black tracking-tighter">High-Frequency Intelligence</h2>
+        </div>
+
+        <div class="grid grid-cols-2 gap-8 items-center flex-1">
+            <div class="glass-card p-10 h-full flex flex-col justify-center">
+                <h3 class="text-3xl font-black mb-6 italic">"The Agent never sleeps."</h3>
+                <p class="text-gray-400 leading-relaxed font-medium">
+                    AllocAI runs an autonomous agent every few minutes that meticulously scans yield variations across the entire ecosystem. 
+                    <br/><br/>
+                    It identifies the <span class="accent-text font-black">safest and most profitable</span> routes before users even realize a yield spike has occurred.
+                </p>
+            </div>
+            <div class="space-y-6">
+                <div class="glass-card p-8 border-emerald-500/20">
+                    <p class="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-3">Omnichain Bridge</p>
+                    <p class="text-xl font-black text-emerald-400">LayerZero v2 Orchestration</p>
+                </div>
+                <div class="glass-card p-8">
+                    <p class="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-3">Execution Speed</p>
+                    <p class="text-xl font-black">Zero-Latency Reallocation</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SLIDE 3: DATA VISUALIZATION (STATS CLONE) -->
+    <section class="slide">
+        <div class="mb-12">
+            <p class="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500 mb-2">Portfolio View</p>
+            <h2 class="text-4xl font-black tracking-tighter">Real-Time Precision</h2>
+        </div>
+
+        <div class="grid grid-cols-3 gap-6 mb-12">
+            <div class="glass-card p-10">
+                <p class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-4">My Position</p>
+                <p className="text-4xl font-black tabular-nums">$1,240.<span class="text-emerald-400">4219</span></p>
+                <p class="text-[9px] font-black text-white/20 mt-4 uppercase">Principal + Growth</p>
+            </div>
+            <div class="glass-card p-10 border-[#B3A288]/30 bg-[#B3A288]/5">
+                <p class="text-[10px] font-black uppercase tracking-widest accent-text mb-4">Current APR</p>
+                <p class="text-4xl font-black tracking-tighter accent-text">5.85%</p>
+                <p class="text-[9px] font-black accent-text/40 mt-4 uppercase">Live Lucid Strategy</p>
+            </div>
+            <div class="glass-card p-10">
+                <p class="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-4">Agent Status</p>
+                <p class="text-4xl font-black tracking-tighter">IDLE</p>
+                <p class="text-[9px] font-black text-white/20 mt-4 uppercase">Waiting for next scan</p>
+            </div>
+        </div>
+
+        <div class="glass-card flex-1 p-10 flex flex-col justify-center">
+            <div class="flex items-center gap-4 mb-4">
+                <div class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></div>
+                <p class="text-xs font-black uppercase tracking-widest">On-Chain Reasoning Verified</p>
+            </div>
+            <p class="text-gray-400 text-lg leading-relaxed max-w-3xl">
+                Every movement made by the agent is backed by an on-chain proof. Users can audit the exact reason why funds were moved, ensuring total transparency of the AI reasoning process.
+            </p>
+        </div>
+    </section>
+
+    <!-- SLIDE 4: THE FUTURE -->
+    <section class="slide">
+        <div class="flex-1 flex flex-col justify-center items-center text-center">
+            <h2 class="text-6xl font-black tracking-tighter mb-12 italic">
+               The first <span class="accent-text">Self-Optimizing</span> financial infrastructure on Kite AI.
+            </h2>
+            <div class="flex gap-4 mb-20">
+                <span class="pill">Gasless Trading</span>
+                <span class="pill">Omnichain Flows</span>
+                <span class="pill">AI Governance</span>
+            </div>
+            <div class="h-1 w-24 bg-[#B3A288]/20"></div>
+            <p class="mt-8 text-[10px] font-black uppercase tracking-[0.5em] text-gray-500">AllocAI Protocol | Mid-Checkpoint 2026</p>
+        </div>
+    </section>
+</body>
+</html>

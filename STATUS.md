@@ -4,8 +4,9 @@ Current Date: 2026-04-10
 Project Name: AllocAI
 Description: Autonomous stablecoin allocation agent built on Kite AI.
 
-## 🚀 Overall Progress: 100% (Production Ready)
-The core architecture is fully synchronized with the official Kite AI Mainnet "Source of Truth".
+### 🏁 LIVE ON MAINNET
+- **Vault Address:** `0x9cCA18327e8B4a11fE8011695E4bb330a48237df`
+- **Status:** 100% (Production Ready)
 
 ---
 

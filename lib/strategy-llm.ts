@@ -61,6 +61,24 @@ function buildFallbackNarrative(input: GenerateStrategyInput): StrategyNarrative
   };
 }
 
+function buildCanonicalSummary(
+  input: GenerateStrategyInput,
+  apr: number
+): Pick<StrategyNarrative, "headline" | "recommendation" | "expectedMonthlyUsdc" | "expectedAnnualUsdc"> {
+  const protocol = input.decision.selectedOpportunity?.protocol || "selected strategy route";
+  const chain = input.decision.selectedOpportunity?.chain || "Kite";
+  const monthly = (input.amountUsdc * (apr / 100)) / 12;
+  const annual = input.amountUsdc * (apr / 100);
+  return {
+    headline: `Optimal ${input.riskProfile === "low" ? "Low-Risk" : "Balanced"} Strategy for ${input.amountUsdc.toFixed(2)} USDC`,
+    recommendation: `Allocate ${input.amountUsdc.toFixed(2)} USDC to ${protocol} on ${chain} at ${apr.toFixed(
+      2
+    )}% APR for projected yield of ${monthly.toFixed(2)} USDC per month.`,
+    expectedMonthlyUsdc: monthly,
+    expectedAnnualUsdc: annual
+  };
+}
+
 export async function generateStrategyNarrative(input: GenerateStrategyInput): Promise<StrategyNarrative> {
   const apiKey = process.env.GROQ_API_KEY;
   const model = process.env.GROQ_MODEL || "qwen/qwen3-32b";
@@ -134,16 +152,18 @@ export async function generateStrategyNarrative(input: GenerateStrategyInput): P
     ) {
       return buildFallbackNarrative(input);
     }
+    const finalApr = input.decision.selectedOpportunity?.apr ?? parsed.apr;
+    const canonical = buildCanonicalSummary(input, finalApr);
     return {
-      headline: parsed.headline,
-      recommendation: parsed.recommendation,
-      expectedMonthlyUsdc: parsed.expectedMonthlyUsdc,
-      expectedAnnualUsdc: parsed.expectedAnnualUsdc,
-      apr: parsed.apr,
+      headline: canonical.headline,
+      recommendation: canonical.recommendation,
+      expectedMonthlyUsdc: canonical.expectedMonthlyUsdc,
+      expectedAnnualUsdc: canonical.expectedAnnualUsdc,
+      apr: finalApr,
       reinvestCadence: parsed.reinvestCadence,
       riskNotes: parsed.riskNotes.map((item) => String(item)).slice(0, 2),
       executionSteps: parsed.executionSteps.map((item) => String(item)).slice(0, 3),
-      compoundedProjections: buildCompoundedProjections(input.amountUsdc, parsed.apr)
+      compoundedProjections: buildCompoundedProjections(input.amountUsdc, finalApr)
     };
   } catch {
     return buildFallbackNarrative(input);

@@ -514,8 +514,11 @@ export default function Home() {
   const requiredPaymentWei = paymentRequirement ? BigInt(paymentRequirement.maxAmountRequired) : 0n;
   const activeBalanceWei = paymentMode === "direct" ? nativeKiteBalanceWei : x402TokenBalanceWei;
   const hasSufficientBalance = activeBalanceWei !== null && activeBalanceWei >= requiredPaymentWei;
+  const parsedStakeAmount = Number(paidStakeAmount);
+  const hasValidStakeAmount = Number.isFinite(parsedStakeAmount) && parsedStakeAmount > 0;
   const readyForPayment =
     Boolean(address && signer && paymentRequirement) &&
+    hasValidStakeAmount &&
     !paymentBalanceLoading &&
     hasSufficientBalance;
 
@@ -611,9 +614,11 @@ export default function Home() {
     addEvent(`Starting paid strategy run (fee: ${FIXED_AGENT_FEE_KITE} KITE).`, "purchase");
     const strategyToast = toast.loading("Processing paid agent run...");
     try {
-      const customTvl = Number(paidStakeAmount || topTvl);
-      const safeTvl = Number.isFinite(customTvl) ? customTvl : topTvl;
-      const safeAmount = Number.isFinite(customTvl) && customTvl > 0 ? customTvl : topTvl;
+      if (!hasValidStakeAmount) {
+        throw new Error("Enter a valid portfolio amount in USDC before running the paid agent.");
+      }
+      const safeTvl = parsedStakeAmount;
+      const safeAmount = parsedStakeAmount;
       const body = JSON.stringify({
         amountKite: FIXED_AGENT_FEE_KITE,
         amountUsdc: safeAmount,

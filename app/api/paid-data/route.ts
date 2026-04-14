@@ -25,6 +25,36 @@ interface PaidDataRequest {
   payerAddress?: string;
 }
 
+function maybeAddress(value: unknown): string | null {
+  return typeof value === "string" && ethers.isAddress(value) ? value : null;
+}
+
+function extractPayerAddress(bodyAddress: string | undefined, authorization: Record<string, unknown> | undefined): string | null {
+  const direct = maybeAddress(bodyAddress);
+  if (direct) return direct;
+  if (!authorization) return null;
+
+  const candidates: unknown[] = [
+    authorization.payer,
+    authorization.payerAddress,
+    authorization.payer_addr,
+    authorization.from,
+    authorization.sender,
+    authorization.account,
+    authorization.address,
+    (authorization.payer as Record<string, unknown> | undefined)?.address,
+    (authorization.authorization as Record<string, unknown> | undefined)?.payer,
+    (authorization.authorization as Record<string, unknown> | undefined)?.payerAddress,
+    (authorization.authorization as Record<string, unknown> | undefined)?.from
+  ];
+
+  for (const candidate of candidates) {
+    const addr = maybeAddress(candidate);
+    if (addr) return addr;
+  }
+  return null;
+}
+
 function getResourceUrl(req: Request): string {
   const url = new URL(req.url);
   return `${url.origin}/api/paid-data`;
@@ -48,6 +78,7 @@ export async function POST(req: Request) {
 
   let paymentReference = "";
   let settlementReference = "";
+  const payerAddress = extractPayerAddress(body.payerAddress, parsedPayment?.authorization);
 
   if (directPaymentTxHash) {
     const verification = await verifyDirectPaymentOnChain({
@@ -176,7 +207,7 @@ export async function POST(req: Request) {
   ];
   savePaidRun({
     runId,
-    payerAddress: body.payerAddress || null,
+    payerAddress,
     paymentReference,
     settlementReference,
     paymentTo: paymentRequest.payTo,

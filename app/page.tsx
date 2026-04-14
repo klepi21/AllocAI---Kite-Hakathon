@@ -299,43 +299,21 @@ export default function Home() {
     }
   }, []);
 
-  const tickAutonomousScheduler = useCallback(async (showToast = false) => {
-    try {
-      const response = await fetch("/api/autonomous/tick", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" }
-      });
-      const payload = (await response.json().catch(() => ({}))) as { executed?: boolean };
-      if (showToast) {
-        if (payload.executed) toast.success("Autonomous test portfolio run executed.");
-        else toast.message("Autonomous scheduler checked; cooldown still active.");
-      }
-    } catch {
-      if (showToast) toast.error("Autonomous scheduler check failed.");
-    }
-    await Promise.all([loadAutonomousStatus(), fetch("/api/kpi", { cache: "no-store" }).then((r) => r.ok ? r.json() : null).then((p) => p && setKpis(p as KpiSnapshot)).catch(() => null)]);
-  }, [loadAutonomousStatus]);
-
   useEffect(() => {
     const interval = setInterval(() => setCountdownNowMs(Date.now()), 1000);
     return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
-    loadAutonomousStatus();
-    const runTick = async () => {
-      const statusResponse = await fetch("/api/autonomous/status", { cache: "no-store" }).catch(() => null);
-      const statusPayload = statusResponse && statusResponse.ok ? ((await statusResponse.json()) as AutonomousStatus) : null;
-      if (statusPayload) setAutonomousStatus(statusPayload);
-      if (statusPayload?.requiresServerAuth) return;
-      await tickAutonomousScheduler(false);
+    const refreshStatus = async () => {
+      await loadAutonomousStatus();
     };
-    runTick();
+    refreshStatus();
     const interval = setInterval(() => {
-      runTick();
+      refreshStatus();
     }, 60_000);
     return () => clearInterval(interval);
-  }, [tickAutonomousScheduler]);
+  }, [loadAutonomousStatus]);
 
   useEffect(() => {
     if (!address) return;
@@ -507,7 +485,8 @@ export default function Home() {
       setPaymentBalanceLoading(true);
       try {
         const provider = signer.provider;
-        const [nativeBal, tokenBal] = await Promise.all([
+        if (!provider) throw new Error("Missing signer provider");
+        const [nativeResult, tokenResult] = await Promise.allSettled([
           provider.getBalance(address),
           new ethers.Contract(
             paymentRequirement.asset,
@@ -516,8 +495,8 @@ export default function Home() {
           ).balanceOf(address) as Promise<bigint>
         ]);
         if (!active) return;
-        setNativeKiteBalanceWei(nativeBal);
-        setX402TokenBalanceWei(tokenBal);
+        setNativeKiteBalanceWei(nativeResult.status === "fulfilled" ? nativeResult.value : null);
+        setX402TokenBalanceWei(tokenResult.status === "fulfilled" ? tokenResult.value : null);
       } catch {
         if (!active) return;
         setNativeKiteBalanceWei(null);

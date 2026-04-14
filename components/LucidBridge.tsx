@@ -36,6 +36,9 @@ export default function LucidBridge({ signer, address, onToggleMode, toggleLabel
   const [selectedDestinationChainId, setSelectedDestinationChainId] = useState("43114");
   const [quotedFeeWei, setQuotedFeeWei] = useState<bigint | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
+  const [latestSourceTx, setLatestSourceTx] = useState<string | null>(null);
+  const [latestDestinationTx, setLatestDestinationTx] = useState<string | null>(null);
+  const [latestDeliveryStatus, setLatestDeliveryStatus] = useState<string | null>(null);
 
   const destinations = useMemo(
     () => [
@@ -68,6 +71,10 @@ export default function LucidBridge({ signer, address, onToggleMode, toggleLabel
     () => destinations.find((item) => item.chainId === selectedDestinationChainId) || destinations[0],
     [destinations, selectedDestinationChainId]
   );
+  const sourceExplorerUrl = latestSourceTx ? `https://kitescan.ai/tx/${latestSourceTx}` : null;
+  const destinationExplorerBase =
+    destination.chainId === "43114" ? "https://snowtrace.io/tx/" : "https://layerzeroscan.com/tx/";
+  const destinationExplorerUrl = latestDestinationTx ? `${destinationExplorerBase}${latestDestinationTx}` : null;
 
   useEffect(() => {
     const loadBalance = async () => {
@@ -164,6 +171,24 @@ export default function LucidBridge({ signer, address, onToggleMode, toggleLabel
         gasLimit: 900000
       });
       await tx.wait();
+      setLatestSourceTx(tx.hash);
+      setLatestDestinationTx(null);
+      setLatestDeliveryStatus("PENDING");
+      try {
+        const lz = await fetch(`https://api-mainnet.layerzero-scan.com/tx/${tx.hash}`, {
+          cache: "no-store"
+        });
+        if (lz.ok) {
+          const payload = (await lz.json()) as {
+            messages?: Array<{ dstTxHash?: string; status?: string }>;
+          };
+          const message = payload.messages?.[0];
+          if (message?.dstTxHash) setLatestDestinationTx(message.dstTxHash);
+          if (message?.status) setLatestDeliveryStatus(message.status);
+        }
+      } catch {
+        // Keep source tx link visible even if destination lookup fails.
+      }
       toast.dismiss(bridgeToast);
       toast.success("BRIDGE SENT", { description: `Tx ${tx.hash.slice(0, 12)}...` });
       setAmount("");
@@ -284,6 +309,45 @@ export default function LucidBridge({ signer, address, onToggleMode, toggleLabel
               Kite USDC → LayerZero/Lucid → {destination.name} USDC
             </p>
           </div>
+        </div>
+        <div className="bg-[#080808] rounded-2xl p-3 border border-white/10 space-y-2">
+          <p className="text-[8px] font-black uppercase tracking-widest text-[#B3A288]">
+            After You Click Bridge
+          </p>
+          <p className="text-[9px] font-black text-gray-300 leading-relaxed">
+            Cross-chain delivery is not instant. It usually arrives in your destination wallet within a few minutes.
+          </p>
+          {sourceExplorerUrl ? (
+            <a
+              href={sourceExplorerUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="block text-[9px] font-black text-blue-300 hover:text-blue-200 break-all"
+            >
+              Source Tx (Kitescan): {latestSourceTx}
+            </a>
+          ) : (
+            <p className="text-[8px] font-black uppercase tracking-widest text-gray-500">
+              Source tx link appears here after submit.
+            </p>
+          )}
+          {destinationExplorerUrl ? (
+            <a
+              href={destinationExplorerUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="block text-[9px] font-black text-emerald-300 hover:text-emerald-200 break-all"
+            >
+              Destination Tx: {latestDestinationTx}
+            </a>
+          ) : (
+            <p className="text-[8px] font-black uppercase tracking-widest text-gray-500">
+              Destination tx may appear after relayer confirmation.
+            </p>
+          )}
+          <p className="text-[8px] font-black uppercase tracking-widest text-gray-500">
+            Delivery Status: {latestDeliveryStatus || "N/A"} · If funds do not appear, switch wallet to {destination.name} and add USDC token.
+          </p>
         </div>
       </div>
       <button

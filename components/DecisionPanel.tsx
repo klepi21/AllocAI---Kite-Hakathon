@@ -99,8 +99,12 @@ const DecisionPanel: React.FC<Props> = ({ decision, latestHistoryDecision, statu
         currentDisplay.selectedOpportunity?.chain || ""
       )
     : null;
-  const protocolUrlToOpen = currentDisplay?.strategyProtocolUrl || inferredProtocolUrl;
-  const defillamaUrlToOpen = currentDisplay?.strategyDefiLlamaUrl || null;
+  /** Prefer live pool URL from yield API, then server-resolved protocol app, then name-based dapp mapping. */
+  const enterStrategyUrl =
+    currentDisplay?.selectedOpportunity?.strategyUrl ||
+    currentDisplay?.strategyProtocolUrl ||
+    inferredProtocolUrl ||
+    null;
 
   return (
     <div className="glass-card p-12 rounded-[2rem] relative overflow-hidden group h-full flex flex-col justify-center min-h-[300px] bg-[#151515]">
@@ -196,30 +200,18 @@ const DecisionPanel: React.FC<Props> = ({ decision, latestHistoryDecision, statu
                 </a>
               </div>
             ) : null}
-            {protocolUrlToOpen ? (
+            {enterStrategyUrl ? (
               <div className="mt-3">
                 <p className="text-[8px] font-black uppercase tracking-[0.2em] text-gray-500 mb-1">
-                  Execute strategy
+                  Protocol app
                 </p>
                 <a
-                  href={protocolUrlToOpen}
+                  href={enterStrategyUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center justify-center rounded-xl border border-blue-400/30 bg-blue-400/10 px-4 py-2 text-[9px] font-black uppercase tracking-[0.15em] text-blue-200 hover:bg-blue-400/20"
+                  className="inline-flex items-center justify-center rounded-xl border border-[#B3A288]/40 bg-[#B3A288]/15 px-5 py-2.5 text-[10px] font-black uppercase tracking-[0.15em] text-[#f8dba8] hover:bg-[#B3A288]/25"
                 >
-                  Open Protocol Strategy
-                </a>
-              </div>
-            ) : null}
-            {defillamaUrlToOpen ? (
-              <div className="mt-2">
-                <a
-                  href={defillamaUrlToOpen}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center justify-center rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-2 text-[9px] font-black uppercase tracking-[0.15em] text-emerald-200 hover:bg-emerald-400/20"
-                >
-                  View On DeFiLlama
+                  Enter strategy
                 </a>
               </div>
             ) : null}

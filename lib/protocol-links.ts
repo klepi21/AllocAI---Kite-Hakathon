@@ -2,30 +2,6 @@ function normalize(value: string): string {
   return value.toLowerCase().trim();
 }
 
-export function getDefiLlamaProtocolUrl(protocolHint: string): string | null {
-  const p = normalize(protocolHint)
-    .replace(/\bv[0-9]+\b/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  if (!p) return null;
-  if (p.includes("morpho")) return "https://defillama.com/protocol/morpho";
-  if (p.includes("aave")) return "https://defillama.com/protocol/aave-v3";
-  if (p.includes("compound")) return "https://defillama.com/protocol/compound-v3";
-  if (p.includes("gmx")) return "https://defillama.com/protocol/gmx";
-  if (p.includes("aerodrome")) return "https://defillama.com/protocol/aerodrome";
-  if (p.includes("stargate")) return "https://defillama.com/protocol/stargate";
-  if (p.includes("curve")) return "https://defillama.com/protocol/curve";
-  if (p.includes("uniswap")) return "https://defillama.com/protocol/uniswap-v3";
-
-  const slug = p
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .replace(/--+/g, "-");
-  if (!slug) return null;
-  return `https://defillama.com/protocol/${slug}`;
-}
-
 export function getProtocolStrategyUrl(protocol: string, chain: string): string | null {
   const p = normalize(protocol);
   const c = normalize(chain);

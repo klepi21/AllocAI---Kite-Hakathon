@@ -3,7 +3,7 @@ import { ethers } from "ethers";
 import { getAllRuns, getPaidRunById, getRecentPaidRunsByAddress } from "@/lib/run-store";
 import { StoredPaidRun } from "@/lib/run-store";
 import { CURRENT_NETWORK } from "@/lib/networks";
-import { getDefiLlamaProtocolUrl, getProtocolStrategyUrl } from "@/lib/protocol-links";
+import { getProtocolStrategyUrl } from "@/lib/protocol-links";
 import {
   extractProtocolHintFromSummary,
   recoverStrategyNarrativeFromSummary
@@ -146,7 +146,6 @@ function buildChainOnlyRuns(
             : "Kite";
       const strategyProtocolUrl =
         getProtocolStrategyUrl(`${protocolHint} ${summaryText.slice(0, 200)}`, chainHint) || undefined;
-      const strategyDefiLlamaUrl = getDefiLlamaProtocolUrl(`${protocolHint} ${summaryText.slice(0, 120)}`) || undefined;
       return {
         runId,
         payerAddress: address,
@@ -184,7 +183,6 @@ function buildChainOnlyRuns(
           paymentStatus: "settled",
           strategyLink,
           strategyProtocolUrl,
-          strategyDefiLlamaUrl,
           selectedOpportunity: {
             chain: chainHint,
             protocol: protocolHint,

@@ -5,7 +5,7 @@ import { verifyDirectPaymentOnChain } from "@/lib/direct-payment";
 import { settleX402Payment } from "@/lib/facilitator";
 import { applyGuardrails, getGuardrailPolicy } from "@/lib/guardrails";
 import { publishRunProofAndSignReceipt } from "@/lib/proof-receipt";
-import { getDefiLlamaProtocolUrl, getProtocolStrategyUrl } from "@/lib/protocol-links";
+import { getProtocolStrategyUrl } from "@/lib/protocol-links";
 import { savePaidRun } from "@/lib/run-store";
 import { generateStrategyNarrative } from "@/lib/strategy-llm";
 import { MOCK_YIELDS, YieldOpportunity } from "@/lib/types";
@@ -189,13 +189,9 @@ export async function POST(req: Request) {
     : protocolHint.length > 0
       ? getProtocolStrategyUrl(protocolHint, guarded.decision.selectedOpportunity?.chain || "")
       : null;
-  const strategyDefiLlamaUrl =
-    guarded.decision.selectedOpportunity?.defillamaUrl ||
-    (protocolHint.length > 0 ? getDefiLlamaProtocolUrl(protocolHint) : null);
   const decisionPayload = {
     ...guarded.decision,
     strategyProtocolUrl: strategyProtocolUrl || undefined,
-    strategyDefiLlamaUrl: strategyDefiLlamaUrl || undefined,
     strategy,
     proofReceipt,
     paymentStatus: "settled" as const,

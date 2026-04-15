@@ -61,6 +61,7 @@ type KpiSnapshot = {
   proofsPosted: number;
   avgResponseMs: number;
   successRate: number;
+  kpiSource?: "store" | "explorer" | "merged" | "none";
 };
 
 type AutonomousStatus = {
@@ -793,9 +794,19 @@ export default function Home() {
           </div>
           <div className="glass-card p-8 rounded-[2rem] border-white/10">
             <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-2">KPI Snapshot</p>
-            <p className="text-2xl font-black text-[#B3A288]">{kpis ? `${kpis.successRate.toFixed(1)}%` : "--"}</p>
+            <p className="text-2xl font-black text-[#B3A288]">
+              {kpis &&
+              kpis.kpiSource === "none" &&
+              kpis.totalRuns === 0 &&
+              kpis.proofsPosted === 0
+                ? "--"
+                : kpis
+                  ? `${kpis.successRate.toFixed(1)}%`
+                  : "--"}
+            </p>
             <p className="text-[8px] font-black uppercase tracking-widest text-gray-500 mt-2">
-              success · proofs {kpis?.proofsPosted ?? 0} · avg {kpis?.avgResponseMs ?? 0}ms
+              success · proofs {kpis?.proofsPosted ?? 0} · avg{" "}
+              {kpis && kpis.avgResponseMs > 0 ? `${kpis.avgResponseMs}ms` : "--"}
             </p>
           </div>
         </div>

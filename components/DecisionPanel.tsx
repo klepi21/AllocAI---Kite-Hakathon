@@ -106,6 +106,10 @@ const DecisionPanel: React.FC<Props> = ({ decision, latestHistoryDecision, statu
     inferredProtocolUrl ||
     null;
 
+  const protocolBadge =
+    currentDisplay?.selectedOpportunity?.protocol?.trim() || "";
+  const chainBadge = currentDisplay?.selectedOpportunity?.chain?.trim() || "";
+
   return (
     <div className="glass-card p-12 rounded-[2rem] relative overflow-hidden group h-full flex flex-col justify-center min-h-[300px] bg-[#151515]">
       <div className="absolute top-0 right-0 w-40 h-40 bg-[#B3A288]/5 blur-3xl group-hover:bg-[#B3A288]/10 transition-all rounded-full" />
@@ -128,11 +132,27 @@ const DecisionPanel: React.FC<Props> = ({ decision, latestHistoryDecision, statu
       ) : (
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-8 h-full">
           <div className="flex-1">
-            <div className="flex items-center space-x-4 mb-4">
+            <div className="flex flex-wrap items-end gap-2 mb-4">
                <span className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/5 bg-[#B3A288]/10 text-[#B3A288]">
                    Strategy
                 </span>
-                <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Confidence: {(currentDisplay.confidence * 100).toFixed(0)}%</span>
+                <div className="flex flex-col gap-1">
+                  <span className="text-[7px] font-black text-gray-500 uppercase tracking-[0.2em]">Protocol</span>
+                  <span
+                    className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-[#B3A288]/35 bg-[#B3A288]/12 ${protocolBadge ? "text-[#f0dcc4]" : "text-gray-500"}`}
+                  >
+                    {protocolBadge || "—"}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-[7px] font-black text-gray-500 uppercase tracking-[0.2em]">Chain</span>
+                  <span
+                    className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/12 bg-white/[0.06] ${chainBadge ? "text-gray-200" : "text-gray-500"}`}
+                  >
+                    {chainBadge || "—"}
+                  </span>
+                </div>
+                <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-auto sm:ml-0">Confidence: {(currentDisplay.confidence * 100).toFixed(0)}%</span>
                 {!decision && status === "idle" && (
                    <span className="text-[9px] font-black text-emerald-400 uppercase tracking-widest bg-emerald-400/5 px-3 py-1.5 rounded-lg border border-emerald-400/10">Latest On-Chain Decision</span>
                 )}

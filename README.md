@@ -4,7 +4,7 @@
 
 **Live app:** [https://allocai-orcin.vercel.app/](https://allocai-orcin.vercel.app/)
 
-AllocAI is built to win on **demo depth**: judges can open the live URL, connect a wallet, see real yield rows, pay once, and verify strategy + proof on [Kitescan](https://kitescan.ai/). It is **KITE-first**—identity-aware agent flows, native KITE for humans, and **Passport x402** for autonomous agents—while surfacing **Lucid Bridge**, **swap aggregation**, and **multi-chain USDC balances** as first-class integrations.
+AllocAI is built to win on **demo depth**: users can open the live URL, connect a wallet, see real yield rows, pay once, and verify strategy + proof on [Kitescan](https://kitescan.ai/). It is **KITE-first**—identity-aware agent flows, native KITE for humans, and **Passport x402** for autonomous agents—while surfacing **Lucid Bridge**, **swap aggregation**, and **multi-chain USDC balances** as first-class integrations.
 
 ## KITE Ecosystem Integrations
 
@@ -118,6 +118,7 @@ Minimum for paid flow + proof:
 - `DIRECT_KITE_FEE_WEI` (KITE wei for direct path)
 - `X402_MERCHANT_NAME`
 - `RUN_STORE_PATH` (recommended on VPS)
+- **KPI / Kitescan (Vercel):** `GET /api/kpi` merges the run file with **[Kitescan](https://kitescan.ai/api-docs?tab=rest_api)** when the store is empty (serverless has no disk). Set `DIRECT_KITE_FEE_WEI`, `X402_PAY_TO_ADDRESS`, `SERVICE_WALLET_PRIVATE_KEY` (for proof-wallet address), and optionally `KITESCAN_API_BASE_URL` + `KITESCAN_API_KEY` for reliable rate limits.
 
 ## Run Locally
 

@@ -69,6 +69,7 @@ export const determineDecision = (
       action: "hold",
       reason: `Found higher yield (${best.apr}%), but the ${sourceChain} gas + LayerZero protocol fees ($${totalEstimatedCost.toFixed(2)}) would consume too much of the profit at our current TVL.`,
       confidence: 0.9,
+      selectedOpportunity: best,
       paidDataUsed,
     };
   }
@@ -77,6 +78,7 @@ export const determineDecision = (
     action: "hold",
     reason: `Current APR of ${currentApr}% remains optimal for our portfolio risk-profile.`,
     confidence: paidDataUsed ? 0.98 : 0.9,
+    selectedOpportunity: best,
     paidDataUsed,
   };
 };

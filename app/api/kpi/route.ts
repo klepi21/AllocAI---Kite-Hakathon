@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { ethers } from "ethers";
 import { getAllRuns } from "@/lib/run-store";
 import {
-  decodeAllocaiSummaryRunId,
+  decodeAllocaiFullSummary,
   fetchKitescanAddressTransactions,
   getServiceWalletAddress,
   kitescanAddressLower,
@@ -59,9 +59,9 @@ export async function GET() {
     for (const tx of txs) {
       const from = kitescanAddressLower(tx.from);
       if (from !== svcLower) continue;
-      const runId = decodeAllocaiSummaryRunId(tx.raw_input);
-      if (!runId) continue;
-      explorerProofRunIds.add(runId);
+      const onChainData = decodeAllocaiFullSummary(tx.raw_input);
+      if (!onChainData?.runId) continue;
+      explorerProofRunIds.add(onChainData.runId);
       if (txSucceeded(tx)) explorerProofOk += 1;
       else explorerProofFail += 1;
     }

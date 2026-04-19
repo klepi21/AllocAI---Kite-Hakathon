@@ -26,13 +26,23 @@ export function txSucceeded(tx: KitescanTx): boolean {
   return !r || r === "success" || r === "ok";
 }
 
-export function decodeAllocaiSummaryRunId(rawInput: string | null | undefined): string | null {
+export function decodeAllocaiFullSummary(rawInput: string | null | undefined): { runId: string, headline: string, apr: number | null } | null {
   if (!rawInput || !rawInput.startsWith("0x") || rawInput === "0x") return null;
   try {
     const decoded = ethers.toUtf8String(rawInput as `0x${string}`);
     if (!decoded.startsWith("ALLOCAI_SUMMARY|")) return null;
     const parts = decoded.split("|");
-    return parts[1] || null;
+    const runId = parts[1] || "";
+    const headline = parts[2] || "";
+    
+    // Attempt to extract APR from the headline string (e.g. "... APR 14.88% ...")
+    let apr: number | null = null;
+    const aprMatch = headline.match(/APR\s+(\d+\.?\d*)%/i);
+    if (aprMatch) {
+      apr = parseFloat(aprMatch[1]);
+    }
+
+    return { runId, headline, apr };
   } catch {
     return null;
   }

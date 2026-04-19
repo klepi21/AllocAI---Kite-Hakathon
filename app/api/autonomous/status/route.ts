@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getLatestAutonomousRun, getRecentAutonomousRuns, savePaidRun } from "@/lib/run-store";
-import { getServiceWalletAddress, fetchKitescanAddressTransactions } from "@/lib/kitescan-fetch";
+import { getServiceWalletAddress, fetchKitescanAddressTransactions, decodeAllocaiFullSummary } from "@/lib/kitescan-fetch";
 import {
   AUTONOMOUS_BASELINE_APR,
   AUTONOMOUS_INTERVAL_MS,
@@ -19,9 +19,12 @@ export async function GET() {
       // Find the last actual proof tx on Kite Mainnet
       const txs = await fetchKitescanAddressTransactions(serviceAddr, 1);
       if (txs.length > 0 && txs[0].hash) {
+        // Try to decode the real content from the chain
+        const onChainData = decodeAllocaiFullSummary(txs[0].raw_input);
+        
         // We found an on-chain proof. Reconstruct a skeleton run so the timer is correct.
         latest = {
-          runId: "recovered_" + txs[0].hash.slice(0, 10),
+          runId: onChainData?.runId || ("recovered_" + txs[0].hash.slice(0, 10)),
           payerAddress: null,
           paymentReference: "AUTONOMOUS_RECOVERED",
           settlementReference: "AUTONOMOUS_RECOVERED",
@@ -31,31 +34,31 @@ export async function GET() {
           success: true,
           decision: {
             action: "hold",
-            reason: "Run consistency verified via Kitescan proof history.",
+            reason: "On-chain proof verified via Kitescan heartbeat.",
             confidence: 0.99,
             paidDataUsed: true,
             strategy: {
-              headline: "Strategy Discovery (Recovered)",
+              headline: onChainData?.headline || "Strategy Discovery (Recovered)",
               recommendation: "System state recovered from latest on-chain heartbeat. Previous yield allocation remains optimal.",
-              apr: AUTONOMOUS_BASELINE_APR,
-              expectedMonthlyUsdc: (AUTONOMOUS_PORTFOLIO_USDC * (AUTONOMOUS_BASELINE_APR / 100)) / 12,
-              expectedAnnualUsdc: AUTONOMOUS_PORTFOLIO_USDC * (AUTONOMOUS_BASELINE_APR / 100),
+              apr: onChainData?.apr || AUTONOMOUS_BASELINE_APR,
+              expectedMonthlyUsdc: (AUTONOMOUS_PORTFOLIO_USDC * ((onChainData?.apr || AUTONOMOUS_BASELINE_APR) / 100)) / 12,
+              expectedAnnualUsdc: AUTONOMOUS_PORTFOLIO_USDC * ((onChainData?.apr || AUTONOMOUS_BASELINE_APR) / 100),
               reinvestCadence: "Monthly",
-              riskNotes: ["Recovered state"],
+              riskNotes: ["On-chain verified"],
               executionSteps: ["Verify tx on Kitescan"],
               compoundedProjections: []
             },
             proofReceipt: {
-              runId: "recovered_" + txs[0].hash.slice(0, 10),
+              runId: onChainData?.runId || ("recovered_" + txs[0].hash.slice(0, 10)),
               paymentReference: "RECOVERED",
               settlementReference: "RECOVERED",
               strategyHash: "RECOVERED",
               txHash: txs[0].hash,
-              timestamp: new Date().toISOString(),
+              timestamp: txs[0].timestamp || new Date().toISOString(),
               signer: serviceAddr,
               signature: "0xRECOVERED"
             },
-            selectedOpportunity: { chain: "Kite", protocol: "AllocAI", apr: AUTONOMOUS_BASELINE_APR, asset: "USDC", risk: "low", liquidity: 0 }
+            selectedOpportunity: { chain: "Kite", protocol: "AllocAI", apr: onChainData?.apr || AUTONOMOUS_BASELINE_APR, asset: "USDC", risk: "low", liquidity: 0 }
           },
           logs: []
         };

@@ -806,7 +806,7 @@ export default function Home() {
           </div>
           <nav className="hidden md:flex items-center gap-8 text-xs font-black tracking-[0.2em] uppercase text-gray-400">
             <a href="#capabilities" className="hover:text-white transition-colors">DApp Capabilities</a>
-            <a href="./Presentation.html" target="_blank" rel="noopener noreferrer" className="hover:text-[#B3A288] transition-colors">Product Deck</a>
+            <a href="/Presentation.html" target="_blank" rel="noopener noreferrer" className="hover:text-[#B3A288] transition-colors">Product Deck</a>
           </nav>
           <div>
             <button
@@ -842,7 +842,7 @@ export default function Home() {
               Launch DApp Live <span className="text-base">🚀</span>
             </button>
             <a
-              href="./Presentation.html"
+              href="/Presentation.html"
               target="_blank"
               rel="noopener noreferrer"
               className="w-full sm:w-auto px-8 py-4 rounded-xl text-xs font-black tracking-widest uppercase bg-[#151515]/80 border border-white/10 text-gray-300 hover:text-white transition-all text-center"
@@ -1046,7 +1046,7 @@ export default function Home() {
             <span>AllocAI © 2026</span>
             <span className="text-[#B3A288]/60">Kite Hackathon MVP Submission</span>
             <div className="flex gap-6">
-              <a href="./Presentation.html" target="_blank" rel="noopener noreferrer" className="hover:text-gray-400 transition-colors">Product Deck</a>
+              <a href="/Presentation.html" target="_blank" rel="noopener noreferrer" className="hover:text-gray-400 transition-colors">Product Deck</a>
               <button onClick={() => setEnteredApp(true)} className="hover:text-gray-400 transition-colors">Launch DApp</button>
             </div>
           </div>

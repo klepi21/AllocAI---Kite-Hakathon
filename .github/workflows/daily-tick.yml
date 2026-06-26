@@ -1,17 +1,1 @@
-name: Daily Agent Tick
-on:
-  schedule:
-    - cron: '0 0 * * *'        # Runs once a day at midnight UTC
-  workflow_dispatch:           # Allows you to trigger it manually from the GitHub UI for testing
 
-jobs:
-  trigger-agent:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Send Tick to AllocAI
-        run: |
-          curl -f -X POST "${{ secrets.AUTONOMOUS_TICK_URL }}" \
-          -H "Content-Type: application/json" \
-          -H "x-autonomous-secret: ${{ secrets.AUTONOMOUS_TICK_SECRET }}" \
-          --retry 3 \
-          --retry-delay 5
